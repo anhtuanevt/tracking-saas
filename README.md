@@ -1,36 +1,106 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Tracking SaaS
 
-## Getting Started
+Affiliate postback tracking platform — Next.js + Supabase + shadcn/ui.
 
-First, run the development server:
+Track clicks từ landing page, nhận postbacks từ affiliate platforms, gửi conversion lên Facebook Conversions API. Có auth, multi-tenant workspace, analytics.
+
+---
+
+## Stack
+
+- **Next.js 16** (App Router, TypeScript)
+- **Supabase** — PostgreSQL + Auth
+- **shadcn/ui** (@base-ui/react)
+- **Recharts** — analytics charts
+- **Vercel** — deploy target
+
+---
+
+## Chạy localhost
 
 ```bash
+# 1. Clone và install
+git clone https://github.com/anhtuanevt/tracking-saas
+cd tracking-saas
+npm install
+
+# 2. Tạo Supabase project tại supabase.com (free)
+#    Vào SQL Editor → chạy toàn bộ file supabase/schema.sql
+
+# 3. Tạo .env.local từ template
+cp .env.local.example .env.local
+# Điền 3 keys từ Supabase Dashboard → Settings → API
+
+# 4. Chạy dev server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# → http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Cấu trúc
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+src/
+├── app/
+│   ├── (auth)/
+│   │   ├── login/          → Đăng nhập
+│   │   └── register/       → Đăng ký (tự tạo workspace)
+│   ├── dashboard/
+│   │   ├── page.tsx        → Overview + stats cards + revenue chart
+│   │   ├── campaigns/      → Quản lý campaigns
+│   │   ├── brands/         → Xem affiliate platforms
+│   │   ├── links/          → Tạo tracking links (/t/:code)
+│   │   ├── events/         → Click events feed (live)
+│   │   ├── analytics/      → Charts 30 ngày
+│   │   ├── settings/       → FB Pixel projects + workspace info
+│   │   └── support/        → Form liên hệ
+│   ├── api/
+│   │   ├── click/          → POST /api/click
+│   │   ├── postback/[platform]/ → POST /api/postback/:platform
+│   │   ├── stats/          → GET /api/stats
+│   │   └── logs/           → GET /api/logs
+│   └── t/[code]/           → Redirect tracking link + log click
+├── lib/
+│   ├── supabase/           → Browser + server Supabase clients
+│   └── tracking/
+│       ├── platforms.ts    → PLATFORM_CONFIG (5 platforms)
+│       └── facebook.ts     → sendToFacebook() — FB CAPI
+└── middleware.ts            → Auth protection
+```
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## Postback URL
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Sau khi đăng nhập, lấy `workspace_id` tại **Settings** → copy và dùng:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+POST https://your-app.vercel.app/api/postback/{platform}?workspace_id={id}
+```
 
-## Deploy on Vercel
+Platforms hỗ trợ: `firstpromoter`, `impact`, `partnerstack`, `awin`, `shareasale`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Deploy
+
+1. Push code lên GitHub (đã có)
+2. Vào **vercel.com** → Import repo `tracking-saas`
+3. Thêm env vars:
+   ```
+   NEXT_PUBLIC_SUPABASE_URL
+   NEXT_PUBLIC_SUPABASE_ANON_KEY
+   SUPABASE_SERVICE_ROLE_KEY
+   ```
+4. Deploy — xong
+
+---
+
+## Database
+
+Xem toàn bộ schema tại `supabase/schema.sql`.
+
+Tables chính: `workspaces`, `projects`, `campaigns`, `tracking_links`, `clicks`, `conversions`, `platforms`, `notifications`
+
+Row Level Security bật trên tất cả tables — mỗi user chỉ thấy data của workspace mình.
