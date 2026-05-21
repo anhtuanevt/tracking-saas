@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
       if (proj?.fb_pixel_id && proj?.fb_access_token) {
         sendToFacebook({
           pixelId: proj.fb_pixel_id, accessToken: proj.fb_access_token,
-          eventName: 'ViewContent', clickData: body,
+          eventName: 'AddToCart', clickData: body,
           mapped: { platform: body.brand_name || 'direct', transactionId: click.id },
           clientIP, userAgent: body.ua || req.headers.get('user-agent') || '',
         }).catch(() => {})

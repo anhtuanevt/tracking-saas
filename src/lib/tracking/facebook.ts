@@ -32,15 +32,17 @@ export async function sendToFacebook({
     user_data: userData,
   }
 
-  if (eventName === 'Purchase') {
+  if (eventName === 'Purchase' || eventName === 'AddToCart') {
     if (clickData.referrer) event.event_source_url = clickData.referrer
     event.custom_data = {
-      value: mapped.amount,
-      currency: mapped.currency,
       content_name: clickData.brand_name || mapped.platform,
       content_type: 'product',
-      order_id: mapped.transactionId,
       num_items: 1,
+      ...(eventName === 'Purchase' && {
+        value: mapped.amount,
+        currency: mapped.currency,
+        order_id: mapped.transactionId,
+      }),
     }
   }
 
