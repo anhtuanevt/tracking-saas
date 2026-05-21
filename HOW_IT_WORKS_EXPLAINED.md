@@ -4,6 +4,102 @@ Affiliate postback tracking — track click → conversion → gửi lên Facebo
 
 ---
 
+## Sơ đồ tổng quan
+
+```mermaid
+flowchart TD
+    LP["🖥️ Landing Page\naffiliate-click-tracking.js"] -->|"POST /api/click\n{fbc, fbp, brand, ua}"| API["⚙️ Next.js API\n(tracking-saas)"]
+    API -->|"click_id (UUID)"| LP
+    LP -->|"Redirect\naffiliate.com?subId1={uuid}"| AFF["🤝 Affiliate Platform\n(FirstPromoter / Impact /\nTikTok / AWIN ...)"]
+    AFF -->|"User mua hàng"| AFF
+    AFF -->|"POST /api/postback/{platform}\n?workspace_id={id}"| API
+    API -->|"Lookup click record by UUID"| DB[("🗄️ Supabase\nPostgreSQL")]
+    API -->|"Purchase event\n{fbc, fbp, email, value}"| FB["📘 Facebook\nConversions API"]
+    API -->|"INSERT conversion"| DB
+    DB -->|"clicks + conversions data"| DASH["📊 Dashboard\n/dashboard"]
+```
+
+---
+
+## Sơ đồ chi tiết — Click tracking
+
+```mermaid
+sequenceDiagram
+    participant U as User (Browser)
+    participant LP as Landing Page
+    participant API as Next.js API
+    participant DB as Supabase DB
+
+    U->>LP: Truy cập landing page
+    LP->>LP: Detect fbclid từ URL → tạo fbc
+    LP->>LP: Read fbp cookie
+    LP->>API: POST /api/click {fbc, fbp, brand_id, ua, referrer}
+    API->>DB: INSERT into clicks
+    DB-->>API: click_id (UUID)
+    API-->>LP: {click_id: "uuid-..."}
+    LP->>U: Redirect → affiliate.com?subId1={uuid}
+```
+
+---
+
+## Sơ đồ chi tiết — Postback & Facebook CAPI
+
+```mermaid
+sequenceDiagram
+    participant AFF as Affiliate Platform
+    participant API as Next.js API
+    participant DB as Supabase DB
+    participant FB as Facebook CAPI
+
+    AFF->>API: POST /api/postback/{platform}?workspace_id={id}
+    note over AFF,API: Payload chứa click_id (UUID từ subId1)
+    API->>API: Map payload theo platform config
+    API->>DB: SELECT click WHERE id = click_id
+    DB-->>API: {fbc, fbp, client_ip, ...}
+    API->>FB: Purchase event {fbc, fbp, sha256(email), value}
+    FB-->>API: {events_received: 1}
+    API->>DB: INSERT into conversions {fb_sent: true}
+```
+
+---
+
+## Sơ đồ DB (quan hệ chính)
+
+```mermaid
+erDiagram
+    workspaces ||--o{ projects : "has"
+    workspaces ||--o{ clicks : "has"
+    workspaces ||--o{ conversions : "has"
+    workspaces ||--o{ platforms : "has"
+    workspaces ||--o{ campaigns : "has"
+    campaigns ||--o{ tracking_links : "has"
+    tracking_links ||--o{ clicks : "generates"
+    clicks ||--o| conversions : "matched by UUID"
+    projects {
+        uuid id
+        string name
+        string fb_pixel_id
+        string fb_access_token
+    }
+    clicks {
+        uuid id
+        string fbc
+        string fbp
+        string client_ip
+        string brand_name
+    }
+    conversions {
+        uuid id
+        string platform
+        decimal amount
+        bool fb_sent
+        string fb_error
+        uuid click_id
+    }
+```
+
+---
+
 ## Cấu trúc dự án
 
 ```
