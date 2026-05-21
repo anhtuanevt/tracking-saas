@@ -9,12 +9,9 @@ Trạng thái hiện tại của dự án và các bước cần làm để prod
 ```
 tracking-saas/          ✅ Next.js SaaS — build pass, code trên GitHub
                            Auth, DB, Dashboard, Analytics, API
-                           affiliate-click-tracking.js (script nhúng landing page)
-                           test-all-platforms.sh (test 5 platforms)
+                           public/affiliate-click-tracking.js (script nhúng landing page)
                            GitHub: anhtuanevt/tracking-saas
 ```
-
-> affiliate-postback (Express cũ) đã được gộp vào tracking-saas.
 
 ---
 
@@ -25,9 +22,10 @@ tracking-saas/          ✅ Next.js SaaS — build pass, code trên GitHub
 □ 2. Chạy supabase/schema.sql trong SQL Editor
 □ 3. Copy 3 keys vào .env.local (xem .env.local.example)
 □ 4. npm run dev
-□ 5. Mở http://localhost:3000 → đăng ký tài khoản
-□ 6. Vào Settings → tạo Project với FB Pixel + Token
-□ 7. Copy workspace_id → dùng làm postback URL
+□ 5. Mở http://localhost:3000 → đăng nhập (register đã bị tắt, dùng Supabase Auth dashboard để tạo user)
+□ 6. Chạy supabase/create_user.sql để tạo workspace cho user mới
+□ 7. Vào Projects tab → tạo Project với FB Pixel + Token
+□ 8. Copy workspace_id ở Settings tab → dùng làm postback URL
 ```
 
 ---
@@ -60,7 +58,7 @@ tracking-saas/          ✅ Next.js SaaS — build pass, code trên GitHub
 POST https://your-app.vercel.app/api/postback/{platform}?workspace_id={id}
 ```
 
-`workspace_id` lấy tại: Dashboard → Settings (section cuối).
+`workspace_id` lấy tại: Dashboard → tab Settings (cuối trang).
 
 Ví dụ:
 ```
@@ -69,24 +67,43 @@ POST https://tracking-saas-xxx.vercel.app/api/postback/firstpromoter?workspace_i
 
 ---
 
-## Tính năng hiện có (tracking-saas)
+## Tính năng hiện có
+
+### Main Dashboard (`/dashboard`) — tabs trong DashboardClient
+
+| Tab | Nội dung |
+|-----|---------|
+| dashboard | Stats cards, revenue chart (14 ngày), by-platform breakdown, postback URLs |
+| logs | Bảng conversions (200 gần nhất) |
+| clicks | Bảng clicks (200 gần nhất) |
+| projects | Quản lý FB Pixel projects |
+| platforms | Quản lý platforms, thêm custom platform, tracking script |
+| settings | Workspace info, logout |
+
+### Sub-pages (tồn tại nhưng sidebar đã bị xóa — không navigate được từ UI)
+
+| Route | Nội dung |
+|-------|---------|
+| /dashboard/analytics | Analytics charts |
+| /dashboard/campaigns | Campaigns CRUD |
+| /dashboard/links | Tracking links (short /t/:code) |
+| /dashboard/brands | Brands/platforms list |
+| /dashboard/events | Events feed |
+| /dashboard/settings | Settings cũ |
+| /dashboard/support | Support page |
+
+### API & Backend
 
 | Tính năng | Trạng thái |
 |-----------|-----------|
-| Đăng ký / Đăng nhập | ✅ |
-| Multi-tenant workspace | ✅ |
-| Dashboard + Stats cards | ✅ |
-| Revenue chart (30 ngày) | ✅ |
-| Campaigns (CRUD) | ✅ |
-| Tracking Links (short /t/:code) | ✅ |
-| Click Events feed | ✅ |
-| Analytics (area + bar + pie chart) | ✅ |
-| Brands / Platforms page | ✅ |
-| Settings (FB Pixel projects) | ✅ |
-| Support page | ✅ |
-| Postback API (5 platforms) | ✅ |
+| Đăng nhập | ✅ |
+| Multi-tenant workspace | ✅ (tạo thủ công qua create_user.sql) |
+| Postback API (6 platforms incl. TikTok) | ✅ |
 | Click tracking API | ✅ |
 | Facebook CAPI (ViewContent + Purchase) | ✅ |
+| Platforms API (CRUD) | ✅ |
+| Projects API (CRUD) | ✅ |
+| Tracking link redirect (/t/:code) | ✅ |
 | Billing / Upgrade | ⬜ Chưa làm |
 | Email notifications | ⬜ Chưa làm |
 | Team members | ⬜ Chưa làm |
@@ -97,5 +114,4 @@ POST https://tracking-saas-xxx.vercel.app/api/postback/firstpromoter?workspace_i
 
 | Repo | URL |
 |------|-----|
-| Express server | https://github.com/anhtuanevt/affiliate-postback-tracker |
 | Next.js SaaS | https://github.com/anhtuanevt/tracking-saas |

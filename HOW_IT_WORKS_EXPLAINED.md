@@ -1,6 +1,6 @@
 # Hệ thống hoạt động như thế nào
 
-Dự án gồm 2 phần riêng biệt, cùng phục vụ một mục tiêu: track affiliate conversion → gửi lên Facebook.
+Affiliate postback tracking — track click → conversion → gửi lên Facebook CAPI.
 
 ---
 
@@ -11,54 +11,82 @@ eventhandle/
 └── tracking-saas/          ← Toàn bộ dự án (Next.js + Supabase)
     ├── public/
     │   └── affiliate-click-tracking.js  ← Nhúng vào landing page
-    ├── src/app/api/         ← Tracking API (postback, click, stats)
+    ├── src/
+    │   ├── proxy.ts         ← Auth logic (không dùng làm Next.js middleware)
+    │   ├── app/api/         ← Tracking API (postback, click, platforms, projects, stats)
+    │   └── app/dashboard/   ← Dashboard UI
     ├── supabase/schema.sql  ← DB schema
-    └── test-all-platforms.sh            ← Test script
+    ├── supabase/create_user.sql ← Tạo workspace thủ công
+    └── supabase/reset.sql   ← Reset schema
     GitHub: anhtuanevt/tracking-saas
 ```
 
-Express server cũ đã được gộp vào. Mọi logic tracking đã có trong Next.js API routes.
-
 ---
 
-## tracking-saas (Next.js SaaS)
-
-App production với đầy đủ tính năng: auth, database PostgreSQL, multi-tenant workspace.
-
-### Stack
+## Stack
 
 | Layer | Tech |
 |-------|------|
 | Frontend + API | Next.js 16 App Router |
-| UI components | shadcn/ui (@base-ui/react) |
+| UI components | shadcn/ui |
 | Charts | Recharts |
 | Auth | Supabase Auth |
 | Database | Supabase PostgreSQL |
 | Deploy | Vercel (free) |
 
-### Luồng hoạt động
+---
+
+## Luồng hoạt động
+
+### Tạo tài khoản
 
 ```
-User đăng ký → Supabase Auth tạo tài khoản
-                 → Trigger tự động tạo Workspace trong DB
-                 → User vào Dashboard
-
-Dashboard
-├── Tạo Campaign
-├── Tạo Tracking Link (short code /t/{code})
-├── Cấu hình Project (FB Pixel ID + Access Token)
-└── Xem Analytics (30-day chart, conversion rate)
-
-Tracking Link (/t/{code})
-  → Redirect đến affiliate URL
-  → Log click vào bảng clicks
-
-Postback từ affiliate platform
-  POST /api/postback/{platform}?workspace_id={id}
-  → Map payload → tìm click → gửi Facebook CAPI → lưu vào bảng conversions
+Admin tạo user trong Supabase Auth dashboard
+  → Chạy create_user.sql để tạo Workspace trong DB
+  → User đăng nhập tại /login → vào Dashboard
 ```
 
-### Chạy localhost
+> Trigger tự động tạo workspace đã bị xóa. Workspace phải tạo thủ công qua `create_user.sql`,
+> hoặc tự động khi user vào `/dashboard` lần đầu (page.tsx sẽ INSERT nếu chưa có).
+
+### Dashboard
+
+```
+/dashboard (DashboardClient — single-page với tabs)
+├── Tab: dashboard  → Stats + Revenue chart (14 ngày) + by-platform
+├── Tab: logs       → Conversions feed
+├── Tab: clicks     → Clicks feed
+├── Tab: projects   → Quản lý FB Pixel (POST/DELETE /api/projects)
+├── Tab: platforms  → Quản lý platforms (GET/POST/DELETE /api/platforms)
+└── Tab: settings   → Workspace info
+
+Sub-pages (có code, không có navigation link — sidebar đã bị xóa):
+  /dashboard/analytics, /dashboard/campaigns, /dashboard/links,
+  /dashboard/brands, /dashboard/events, /dashboard/settings, /dashboard/support
+```
+
+### Tracking flow
+
+```
+1. Nhúng script vào landing page:
+   <script src="https://yourdomain.com/affiliate-click-tracking.js?workspace_id=..."></script>
+
+2. User click affiliate link
+   → Script detect fbclid → tạo fbc, đọc fbp cookie
+   → POST /api/click → server lưu click vào DB, trả UUID
+   → Redirect: affiliate.com?subId1={uuid}
+
+3. User mua → affiliate platform gửi postback:
+   POST /api/postback/{platform}?workspace_id={id}
+   → Parse payload theo platform config
+   → Tìm click record theo UUID
+   → Gửi Purchase event lên Facebook CAPI
+   → Lưu vào bảng conversions
+```
+
+---
+
+## Chạy localhost
 
 ```bash
 cd tracking-saas
@@ -73,34 +101,15 @@ npm run dev
 # → http://localhost:3000
 ```
 
-### Postback URL format (SaaS)
+---
+
+## Postback URL format
 
 ```
 POST https://your-app.vercel.app/api/postback/{platform}?workspace_id={uuid}
 ```
 
-Lấy `workspace_id` từ: Dashboard → Settings → Postback URL format
-
----
-
-## UUID / Click ID linking
-
-Cơ chế quan trọng nhất — cùng ID xuyên suốt toàn bộ flow:
-
-```
-1. User click affiliate link
-   → Frontend script generate UUID / click_id
-   → Gửi POST /click hoặc /api/click → server lưu vào DB
-
-2. UUID được gắn vào URL: ...?subId1={uuid}
-
-3. User mua → Platform gửi postback kèm UUID
-
-4. Server nhận postback:
-   → Tìm click record theo UUID
-   → Ghép thêm fbc, fbp, email... từ click gốc
-   → Gửi Purchase event lên Facebook với đầy đủ data
-```
+Lấy `workspace_id` từ: Dashboard → tab Settings
 
 ---
 

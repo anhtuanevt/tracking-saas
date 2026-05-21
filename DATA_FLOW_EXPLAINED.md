@@ -1,6 +1,6 @@
 # Data Flow — Tracking SaaS
 
-Chi tiết luồng dữ liệu từ click → conversion → Facebook, áp dụng cho cả Express lẫn Next.js SaaS.
+Chi tiết luồng dữ liệu từ click → conversion → Facebook.
 
 ---
 
@@ -21,12 +21,12 @@ Chi tiết luồng dữ liệu từ click → conversion → Facebook, áp dụn
   Gửi postback kèm click_id về server
         │
         ▼
-[Server — Express hoặc Next.js API]
+[Next.js API]
   POST /api/postback/{platform}?workspace_id={id}
   1. Parse payload theo platform config
   2. Tìm click record theo click_id
   3. Gửi Purchase → Facebook CAPI
-  4. Lưu conversion vào DB (SaaS) hoặc in-memory (Express)
+  4. Lưu conversion vào bảng conversions
         │
         ▼
 [Facebook Conversions API]
@@ -45,10 +45,11 @@ Chi tiết luồng dữ liệu từ click → conversion → Facebook, áp dụn
 | PartnerStack | `affiliateLink` | `revenue` | `key` |
 | AWIN | `transactionId` | `saleAmount` | `transactionId` |
 | ShareASale | `cookieId` | `commissionAmount` | `transactionId` |
+| TikTok | `ttclid` | `value` | `order_id` |
 
 ---
 
-## Database schema (SaaS — Supabase)
+## Database schema (Supabase)
 
 ```
 workspaces          → multi-tenant, mỗi user có 1 workspace
@@ -57,34 +58,22 @@ workspaces          → multi-tenant, mỗi user có 1 workspace
   └── tracking_links→ short links /t/{code}, đếm clicks
   └── clicks        → log mỗi click (ip, fbc, fbp, referrer...)
   └── conversions   → log mỗi postback (amount, fb_sent, fb_error...)
-  └── platforms     → custom platform configs
+  └── platforms     → custom platform configs (system + per-workspace)
   └── notifications → in-app alerts
 ```
 
 ---
 
-## API Endpoints
-
-### Express (affiliate-postback)
+## API Endpoints (Next.js SaaS)
 
 ```
-POST /click                        → track click, trả click UUID
-POST /postback/:platform           → nhận postback (default project)
-POST /postback/:project/:platform  → nhận postback (project cụ thể)
-GET  /postback/:platform           → AWIN (query params)
-GET  /api/stats                    → tổng hợp số liệu
-GET  /api/logs                     → event logs
-GET  /api/clicks                   → danh sách clicks
-GET  /api/projects                 → danh sách projects
-GET  /api/platforms                → danh sách platforms
-GET  /health                       → health check
-```
-
-### Next.js SaaS (tracking-saas)
-
-```
-POST /api/click                    → track click (yêu cầu workspace_id)
+POST /api/click                    → track click, trả click UUID (yêu cầu workspace_id)
 POST /api/postback/:platform       → nhận postback (?workspace_id=...)
+GET  /api/platforms                → danh sách platforms (system + custom)
+POST /api/platforms                → tạo custom platform
+DELETE /api/platforms              → xóa custom platform
+POST /api/projects                 → tạo project (FB Pixel config)
+DELETE /api/projects               → xóa project
 GET  /api/stats                    → stats của workspace (cần auth)
 GET  /api/logs                     → logs (cần auth)
 GET  /t/:code                      → redirect tracking link + log click
@@ -94,20 +83,6 @@ GET  /t/:code                      → redirect tracking link + log click
 
 ## Ví dụ test postback (curl)
 
-### Express
-```bash
-curl -X POST http://localhost:3000/postback/firstpromoter \
-  -H "Content-Type: application/json" \
-  -d '{
-    "sub_id": "abc-123-uuid",
-    "event_type": "new_customer",
-    "conversion_amount": 99.99,
-    "currency": "USD",
-    "id": "txn_001"
-  }'
-```
-
-### SaaS (Next.js)
 ```bash
 curl -X POST https://your-app.vercel.app/api/postback/firstpromoter?workspace_id=YOUR_WS_ID \
   -H "Content-Type: application/json" \
