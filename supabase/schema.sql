@@ -172,21 +172,13 @@ insert into platforms (workspace_id, name, click_id_field, event_type_field, amo
   (null, 'Impact',         'clickId',        'eventName',      'amount',            'currency', 'transactionId',  'customerEmail',  true),
   (null, 'PartnerStack',   'affiliateLink',  'conversionType', 'revenue',           'currency', 'key',            'customerEmail',  true),
   (null, 'AWIN',           'transactionId',  'eventType',      'saleAmount',        'currency', 'transactionId',  'customerEmail',  true),
-  (null, 'ShareASale',     'cookieId',       'conversionType', 'commissionAmount',  'currency', 'transactionId',  'customerEmail',  true);
+  (null, 'ShareASale',     'cookieId',       'conversionType', 'commissionAmount',  'currency', 'transactionId',  'customerEmail',  true),
+  (null, 'TikTok',        'ttclid',         'event',          'value',             'currency', 'order_id',       'email',          true);
 
 -- ─── Auto-create workspace on signup ─────────────────────────────────────────
-create or replace function handle_new_user()
-returns trigger language plpgsql security definer as $$
-declare
-  ws_slug text;
-begin
-  ws_slug := lower(regexp_replace(split_part(new.email, '@', 1), '[^a-z0-9]', '-', 'g'));
-  insert into workspaces (name, slug, owner_id)
-  values (split_part(new.email, '@', 1), ws_slug || '-' || substr(new.id::text, 1, 6), new.id);
-  return new;
-end;
-$$;
-
-create trigger on_auth_user_created
-  after insert on auth.users
-  for each row execute procedure handle_new_user();
+-- Chạy thủ công sau khi tạo user trong Supabase Auth dashboard:
+--
+-- INSERT INTO workspaces (name, slug, owner_id)
+-- VALUES ('my-workspace', 'my-workspace', '<user-id-from-auth-dashboard>');
+--
+-- Hoặc dùng script: supabase/create_user.sql

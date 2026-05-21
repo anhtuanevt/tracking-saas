@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -52,10 +51,6 @@ export default function LoginPage() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
             </Button>
-            <p className="text-sm text-center text-muted-foreground">
-              Chưa có tài khoản?{' '}
-              <Link href="/register" className="text-primary hover:underline">Đăng ký</Link>
-            </p>
           </form>
         </CardContent>
       </Card>

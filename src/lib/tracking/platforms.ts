@@ -28,6 +28,10 @@ export const SYSTEM_PLATFORMS: Record<string, PlatformConfig> = {
     clickIdField: 'cookieId', eventTypeField: 'conversionType', amountField: 'commissionAmount',
     currencyField: 'currency', transactionIdField: 'transactionId', emailField: 'customerEmail',
   },
+  tiktok: {
+    clickIdField: 'ttclid', eventTypeField: 'event', amountField: 'value',
+    currencyField: 'currency', transactionIdField: 'order_id', emailField: 'email',
+  },
 }
 
 export function mapPayload(cfg: PlatformConfig, body: Record<string, unknown>) {
