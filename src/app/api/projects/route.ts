@@ -11,11 +11,17 @@ export async function POST(req: NextRequest) {
   if (!workspace) return NextResponse.json({ error: 'No workspace' }, { status: 403 })
 
   const body = await req.json()
+  const rawIds = body.content_ids as string | undefined
+  const contentIds = rawIds ? rawIds.split(',').map((s: string) => s.trim()).filter(Boolean) : null
+
   const { data, error } = await supabase.from('projects').insert({
     workspace_id: workspace.id,
     name: body.name,
     fb_pixel_id: body.fb_pixel_id || null,
     fb_access_token: body.fb_access_token || null,
+    content_ids: contentIds,
+    content_category: body.content_category || null,
+    klaviyo_api_key: body.klaviyo_api_key || null,
   }).select('*').single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })

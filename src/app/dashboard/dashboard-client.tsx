@@ -80,6 +80,9 @@ export function DashboardClient({ workspace, userEmail, conversions, clicks, pro
   const [projName, setProjName] = useState('')
   const [projPixel, setProjPixel] = useState('')
   const [projToken, setProjToken] = useState('')
+  const [projContentIds, setProjContentIds] = useState('')
+  const [projCategory, setProjCategory] = useState('')
+  const [projKlaviyo, setProjKlaviyo] = useState('')
   const [projSaving, setProjSaving] = useState(false)
   const [projMsg, setProjMsg] = useState('')
 
@@ -121,13 +124,13 @@ export function DashboardClient({ workspace, userEmail, conversions, clicks, pro
     const res = await fetch('/api/projects', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: projName, fb_pixel_id: projPixel, fb_access_token: projToken }),
+      body: JSON.stringify({ name: projName, fb_pixel_id: projPixel, fb_access_token: projToken, content_ids: projContentIds, content_category: projCategory, klaviyo_api_key: projKlaviyo }),
     })
     const data = await res.json()
     setProjSaving(false)
     if (!res.ok) { setProjMsg('Lỗi: ' + data.error); return }
     setProjects(prev => [...prev, data])
-    setProjName(''); setProjPixel(''); setProjToken('')
+    setProjName(''); setProjPixel(''); setProjToken(''); setProjContentIds(''); setProjCategory(''); setProjKlaviyo('')
     setProjMsg('Đã lưu project!')
   }
 
@@ -341,7 +344,10 @@ export function DashboardClient({ workspace, userEmail, conversions, clicks, pro
                 <div className="space-y-1">
                   <div className="font-semibold text-white">{p.name}</div>
                   <div className="text-gray-500 text-sm">Pixel: {p.fb_pixel_id || '—'}</div>
-                  <div className="text-gray-500 text-sm">Token: {p.fb_access_token ? '***configured***' : '—'}</div>
+                  <div className="text-gray-500 text-sm">Token: {p.fb_access_token ? '***' : '—'}</div>
+                  <div className="text-gray-500 text-sm">Content IDs: {(p as {content_ids?: string[]}).content_ids?.join(', ') || '—'}</div>
+                  <div className="text-gray-500 text-sm">Category: {(p as {content_category?: string}).content_category || '—'}</div>
+                  <div className="text-gray-500 text-sm">Klaviyo: {(p as {klaviyo_api_key?: string}).klaviyo_api_key ? '***' : '—'}</div>
                   <div className="text-gray-600 text-sm mt-2">ID: {p.id}</div>
                 </div>
                 <button onClick={() => deleteProject(p.id)} className="text-red-500 hover:text-red-400 text-sm border border-red-900 hover:border-red-700 px-2 py-1 rounded transition">Delete</button>
@@ -355,6 +361,9 @@ export function DashboardClient({ workspace, userEmail, conversions, clicks, pro
                   { label: 'Name', val: projName, set: setProjName, ph: 'My Store', req: true },
                   { label: 'FB Pixel ID', val: projPixel, set: setProjPixel, ph: '1234567890' },
                   { label: 'Access Token', val: projToken, set: setProjToken, ph: 'EAAB...', type: 'password' },
+                  { label: 'Content IDs', val: projContentIds, set: setProjContentIds, ph: 'sku001,sku002 (phân cách bằng dấu phẩy)' },
+                  { label: 'Category', val: projCategory, set: setProjCategory, ph: 'vd: clothing, electronics' },
+                  { label: 'Klaviyo Key', val: projKlaviyo, set: setProjKlaviyo, ph: 'pk_...', type: 'password' },
                 ].map(f => (
                   <div key={f.label} className="flex items-center gap-3">
                     <label className="text-gray-500 text-sm w-24 shrink-0">{f.label}</label>

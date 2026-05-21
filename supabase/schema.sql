@@ -20,6 +20,9 @@ create table projects (
   fb_pixel_id      text,
   fb_access_token  text,
   webhook_secret   text,
+  content_ids      text[],
+  content_category text,
+  klaviyo_api_key  text,
   created_at       timestamptz not null default now()
 );
 
@@ -183,3 +186,11 @@ insert into platforms (workspace_id, name, click_id_field, event_type_field, amo
 -- VALUES ('my-workspace', 'my-workspace', '<user-id-from-auth-dashboard>');
 --
 -- Hoặc dùng script: supabase/create_user.sql
+
+-- ─── Migration: thêm các cột mới cho projects ─────────────────────────────────
+-- Chạy đoạn này nếu database đã tạo trước khi có các cột này:
+--
+-- ALTER TABLE projects
+--   ADD COLUMN IF NOT EXISTS content_ids      text[],
+--   ADD COLUMN IF NOT EXISTS content_category text,
+--   ADD COLUMN IF NOT EXISTS klaviyo_api_key  text;

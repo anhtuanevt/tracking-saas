@@ -77,9 +77,9 @@ flowchart TD
 | **Match click ↔ conversion** | UUID trong `subId1` → lookup `clicks.id` | UUID trong Postgres |
 | **Bảo vệ postback** | ✅ `webhook_secret` verify | ❌ không có |
 | **Dedup conversion** | ✅ check `transaction_id` | ❌ không rõ |
-| **Dataset merge** | ❌ không có | ✅ Get Dataset2/4 (catalog) |
+| **Dataset merge** | ✅ content_ids + content_category per project | ✅ Get Dataset2/4 (catalog) |
 | **Event khi conversion** | ✅ Purchase CAPI | ✅ CAPI |
-| **EAPI (email platform)** | ❌ chưa có | ✅ CAPI + EAPI |
+| **EAPI (email platform)** | ✅ Klaviyo (Placed Order event) | ✅ CAPI + EAPI |
 | **Multi-tenant** | ✅ workspace per user | ❌ 1 workspace cố định |
 | **Auth dashboard** | ✅ Supabase Auth | ❌ không có |
 | **Platform config** | ✅ 6 platforms + custom | ✅ Impact (cố định) |
@@ -87,32 +87,21 @@ flowchart TD
 
 ---
 
-## Điểm còn thiếu so với n8n
-
-### 1. Dataset merge (Get Dataset2 / Dataset4)
-
-n8n merge thêm data từ nguồn ngoài (Google Sheet hoặc catalog) vào event trước khi gửi CAPI — thường là `content_ids`, `contents` array với product SKU, giá, category.
-
-**Ảnh hưởng:** Facebook CAPI nhận event thiếu `content_ids` nên khó match với catalog, ROAS tracking kém chính xác hơn.
-
-**Fix nếu cần:** Thêm bảng `products` trong Supabase, lookup theo `brand_id` khi gửi CAPI.
-
-### 2. EAPI (Email API)
-
-n8n gửi thêm event sang email platform (Klaviyo / Mailchimp) song song với Facebook CAPI.
-
-**Fix nếu cần:** Thêm call đến Klaviyo API trong `/api/postback/:platform` sau khi gửi Facebook.
-
----
-
 ## Kết luận
 
-Hệ thống **tracking-saas bao phủ đầy đủ core flow** giống n8n:
+Hệ thống **tracking-saas bao phủ đầy đủ core flow** giống n8n và đã **vượt trội toàn diện**:
 
 ```
-click → lưu UUID → affiliate → postback → match UUID → Purchase CAPI
+click → lưu UUID → affiliate → postback → match UUID → Purchase CAPI + Klaviyo
 ```
 
-Và **vượt trội hơn** n8n ở: bảo mật (webhook_secret), dedup, multi-tenant, 6 platform configs, dashboard có auth.
-
-Còn thiếu 2 tính năng phụ: **dataset merge** (content_ids cho catalog) và **EAPI** (email platform).
+| Lợi thế so với n8n | Chi tiết |
+|--------------------|---------|
+| Bảo mật postback | `webhook_secret` per workspace — n8n không có |
+| Dedup conversion | Check `transaction_id` trước khi xử lý |
+| Multi-tenant | Nhiều user, mỗi user có workspace riêng |
+| 6 platform configs | FirstPromoter, Impact, PartnerStack, AWIN, ShareASale, TikTok + custom |
+| Dashboard có auth | Login, workspace settings, project management |
+| Content IDs / catalog | `content_ids[]` + `content_category` per project → enriched CAPI payload |
+| Klaviyo EAPI | `Placed Order` event song song với Facebook CAPI |
+| FB CAPI + Klaviyo parallel | Dùng `Promise.all` — không blocking lẫn nhau |

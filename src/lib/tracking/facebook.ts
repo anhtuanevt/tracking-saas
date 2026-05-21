@@ -7,10 +7,12 @@ function sha256(v: string | undefined) {
 
 export async function sendToFacebook({
   pixelId, accessToken, eventName, clickData, mapped, clientIP, userAgent,
+  contentIds, contentCategory,
 }: {
   pixelId: string; accessToken: string; eventName: string
   clickData: Record<string, unknown>; mapped: Record<string, unknown>
   clientIP: string; userAgent: string
+  contentIds?: string[]; contentCategory?: string
 }) {
   if (!pixelId || !accessToken) return null
 
@@ -37,7 +39,12 @@ export async function sendToFacebook({
     event.custom_data = {
       content_name: clickData.brand_name || mapped.platform,
       content_type: 'product',
+      content_category: contentCategory || undefined,
       num_items: 1,
+      ...(contentIds?.length && {
+        content_ids: contentIds,
+        contents: contentIds.map(id => ({ id, quantity: 1 })),
+      }),
       ...(eventName === 'Purchase' && {
         value: mapped.amount,
         currency: mapped.currency,

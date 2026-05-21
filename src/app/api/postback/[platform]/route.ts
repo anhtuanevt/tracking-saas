@@ -3,6 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { SYSTEM_PLATFORMS, mapPayload } from '@/lib/tracking/platforms'
 import { sendToFacebook } from '@/lib/tracking/facebook'
+import { sendToKlaviyo } from '@/lib/tracking/klaviyo'
 
 function getClientIP(req: NextRequest) {
   return req.headers.get('cf-connecting-ip') ||
@@ -70,24 +71,39 @@ async function handle(req: NextRequest, platform: string, body: Record<string, u
     if (click) { clickData = click; projectId = click.project_id }
   }
 
-  // Get project FB credentials
+  // Get project credentials and fire FB CAPI + Klaviyo in parallel
   let fbResult = null
   let fbError: string | null = null
+  let klaviyoResult = null
+  let klaviyoError: string | null = null
   if (projectId) {
     const { data: proj } = await supabase.from('projects')
-      .select('fb_pixel_id, fb_access_token').eq('id', projectId).single()
-    if (proj?.fb_pixel_id && proj?.fb_access_token) {
-      try {
-        fbResult = await sendToFacebook({
-          pixelId: proj.fb_pixel_id, accessToken: proj.fb_access_token,
-          eventName: 'Purchase', clickData, mapped,
-          clientIP: getClientIP(req),
-          userAgent: req.headers.get('user-agent') || String(clickData.user_agent || ''),
-        })
-      } catch (err: unknown) {
-        fbError = String(err)
-      }
-    }
+      .select('fb_pixel_id, fb_access_token, content_ids, content_category, klaviyo_api_key')
+      .eq('id', projectId).single()
+
+    const email = String(mapped.email || clickData.email || '')
+
+    await Promise.all([
+      proj?.fb_pixel_id && proj?.fb_access_token
+        ? sendToFacebook({
+            pixelId: proj.fb_pixel_id, accessToken: proj.fb_access_token,
+            eventName: 'Purchase', clickData, mapped,
+            clientIP: getClientIP(req),
+            userAgent: req.headers.get('user-agent') || String(clickData.user_agent || ''),
+            contentIds: proj.content_ids ?? undefined,
+            contentCategory: proj.content_category ?? undefined,
+          }).then(r => { fbResult = r }).catch(e => { fbError = String(e) })
+        : Promise.resolve(),
+
+      proj?.klaviyo_api_key && email
+        ? sendToKlaviyo({
+            apiKey: proj.klaviyo_api_key, email,
+            firstName: String(clickData.first_name || ''),
+            lastName: String(clickData.last_name || ''),
+            mapped, clickData,
+          }).then(r => { klaviyoResult = r }).catch(e => { klaviyoError = String(e) })
+        : Promise.resolve(),
+    ])
   }
 
   // Save conversion
@@ -102,6 +118,8 @@ async function handle(req: NextRequest, platform: string, body: Record<string, u
     fb_sent: !!fbResult,
     fb_result: fbResult,
     fb_error: fbError,
+    klaviyo_sent: !!klaviyoResult,
+    klaviyo_error: klaviyoError,
     raw_payload: body,
   })
 
@@ -110,6 +128,7 @@ async function handle(req: NextRequest, platform: string, body: Record<string, u
     transactionId: mapped.transactionId,
     amount: mapped.amount, currency: mapped.currency,
     fbSent: !!fbResult, fbError: fbError || undefined,
+    klaviyoSent: !!klaviyoResult, klaviyoError: klaviyoError || undefined,
   })
 }
 
