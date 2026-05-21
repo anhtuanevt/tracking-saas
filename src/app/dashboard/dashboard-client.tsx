@@ -26,7 +26,7 @@ interface Platform {
   transaction_id_field: string; email_field: string
   workspace_id: string | null
 }
-interface Workspace { id: string; name: string; slug: string; plan: string }
+interface Workspace { id: string; name: string; slug: string; plan: string; webhook_secret: string }
 
 type Tab = 'dashboard' | 'logs' | 'clicks' | 'projects' | 'platforms' | 'settings'
 
@@ -255,7 +255,7 @@ export function DashboardClient({ workspace, userEmail, conversions, clicks, pro
                 <div key={p.id} className="flex items-center gap-2">
                   <span className="text-gray-600 text-sm w-28">{p.name}</span>
                   <code className="text-indigo-300 text-sm break-all">
-                    POST /api/postback/{p.name.toLowerCase()}?workspace_id={workspace.id}
+                    POST /api/postback/{p.name.toLowerCase()}?workspace_id={workspace.id}&secret={workspace.webhook_secret}
                   </code>
                 </div>
               ))}
@@ -381,7 +381,7 @@ export function DashboardClient({ workspace, userEmail, conversions, clicks, pro
             <div className="bg-gray-900 rounded-lg border border-gray-800 p-4">
               <div className="text-gray-400 text-sm mb-4">Platform Postback Config</div>
               <div className="text-gray-500 text-sm mb-4">
-                Postback URL format: <code className="text-indigo-300 font-mono text-sm">https://yourdomain.com/api/postback/{'{'}{'{'}platform{'}'}{'}'}</code>
+                Postback URL format: <code className="text-indigo-300 font-mono text-sm">https://yourdomain.com/api/postback/{'{'}{'{'}platform{'}'}{'}'}?workspace_id={'{'}id{'}'}&secret={'{'}webhook_secret{'}'}</code>
               </div>
               <table className="w-full text-sm">
                 <thead>
@@ -406,7 +406,7 @@ export function DashboardClient({ workspace, userEmail, conversions, clicks, pro
                       <td className="px-3 py-2.5 text-gray-400 font-mono text-sm">{p.transaction_id_field}</td>
                       <td className="px-3 py-2.5">
                         <code className="text-indigo-300 font-mono text-sm break-all">
-                          /api/postback/{p.name.toLowerCase()}?workspace_id={workspace.id}
+                          /api/postback/{p.name.toLowerCase()}?workspace_id={workspace.id}&secret={workspace.webhook_secret}
                         </code>
                       </td>
                       <td className="px-3 py-2.5">
@@ -474,6 +474,7 @@ export function DashboardClient({ workspace, userEmail, conversions, clicks, pro
               { label: 'Plan', value: workspace.plan },
               { label: 'User', value: userEmail },
               { label: 'Workspace ID', value: workspace.id },
+              { label: 'Webhook Secret', value: workspace.webhook_secret },
             ].map(r => (
               <div key={r.label} className="flex items-center gap-3 py-1.5 border-b border-gray-800 last:border-0">
                 <span className="text-gray-500 text-sm w-28 shrink-0">{r.label}</span>

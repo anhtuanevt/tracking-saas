@@ -8,4 +8,5 @@ VALUES (
   'workspace',
   'workspace',
   'YOUR_USER_ID'   -- paste UID từ Authentication → Users
-);
+)
+RETURNING id, webhook_secret;  -- copy webhook_secret để dùng trong postback URL

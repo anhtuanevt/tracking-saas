@@ -3,12 +3,13 @@ create extension if not exists "pgcrypto";
 
 -- ─── Workspaces ───────────────────────────────────────────────────────────────
 create table workspaces (
-  id          uuid primary key default gen_random_uuid(),
-  name        text not null,
-  slug        text unique not null,
-  owner_id    uuid references auth.users(id) on delete cascade,
-  plan        text not null default 'free',
-  created_at  timestamptz not null default now()
+  id               uuid primary key default gen_random_uuid(),
+  name             text not null,
+  slug             text unique not null,
+  owner_id         uuid references auth.users(id) on delete cascade,
+  plan             text not null default 'free',
+  webhook_secret   text not null default encode(gen_random_bytes(16), 'hex'),
+  created_at       timestamptz not null default now()
 );
 
 -- ─── Projects (FB Pixel per workspace) ───────────────────────────────────────

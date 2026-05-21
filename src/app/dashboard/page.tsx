@@ -11,7 +11,7 @@ export default async function DashboardPage() {
 
   const { data: workspace } = await supabase
     .from('workspaces')
-    .select('id, name, slug, plan')
+    .select('id, name, slug, plan, webhook_secret')
     .eq('owner_id', user.id)
     .single()
 
@@ -19,7 +19,7 @@ export default async function DashboardPage() {
     const { data: created } = await supabase
       .from('workspaces')
       .insert({ name: 'My Workspace', slug: user.id.slice(0, 8), owner_id: user.id })
-      .select('id, name, slug, plan')
+      .select('id, name, slug, plan, webhook_secret')
       .single()
     if (!created) redirect('/login')
     return (

@@ -21,6 +21,14 @@ async function handle(req: NextRequest, platform: string, body: Record<string, u
   const workspaceId = String(body.workspace_id || req.nextUrl.searchParams.get('workspace_id') || '')
   if (!workspaceId) return NextResponse.json({ error: 'workspace_id required' }, { status: 400 })
 
+  // Verify webhook secret
+  const secret = String(body.secret || req.nextUrl.searchParams.get('secret') || '')
+  const { data: workspace } = await supabase
+    .from('workspaces').select('webhook_secret').eq('id', workspaceId).single()
+  if (!workspace || workspace.webhook_secret !== secret) {
+    return NextResponse.json({ error: 'Invalid secret' }, { status: 401 })
+  }
+
   // Resolve platform config
   const platformKey = platform.toLowerCase()
   let cfg = SYSTEM_PLATFORMS[platformKey]
